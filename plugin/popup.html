@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Frami</title>
+    <link rel="stylesheet" href="src/popup.css">
+  </head>
+  <body>
+    <main class="shell">
+      <header class="header">
+        <div>
+          <h1>Frami</h1>
+          <p id="pageTitle">Current tab</p>
+        </div>
+        <div class="headerActions">
+          <button id="settingsBtn" class="settingsButton" type="button">Settings</button>
+          <button id="selectAreaBtn" class="captureButton" type="button" title="Select area">
+            Select area
+          </button>
+        </div>
+      </header>
+
+      <section id="preview" class="preview" aria-label="Screenshot preview">
+        <img id="previewImage" alt="No screenshot captured yet" hidden>
+        <div id="emptyState" class="emptyState">
+          <div class="emptyIcon" aria-hidden="true"></div>
+          <h2>No screenshots yet</h2>
+          <p>Select the exact area that needs attention. You can repeat this on app and Figma tabs before creating a ticket.</p>
+          <button id="selectAreaEmptyBtn" type="button">Select area</button>
+        </div>
+      </section>
+
+      <div class="captureHeader">
+        <span>Draft</span>
+        <button id="clearCapturesBtn" type="button" class="clearDraftButton" disabled>Clear all</button>
+      </div>
+      <ul id="screenshotsList" class="captureList" aria-label="Screenshots"></ul>
+
+      <section id="tokenPanel" class="tokenPanel" hidden>
+        <div>
+          <strong>Backend settings</strong>
+          <p>These values are saved in this browser.</p>
+        </div>
+        <div class="tokenActions">
+          <input id="serverUrlInput" type="url" autocomplete="off" spellcheck="false" placeholder="Backend URL">
+          <input id="tokenInput" type="text" autocomplete="off" spellcheck="false" placeholder="Paste token">
+          <button id="saveTokenBtn" type="button">Save</button>
+        </div>
+      </section>
+
+      <label class="field">
+        <span>Comment</span>
+        <textarea id="commentInput" rows="3" placeholder="What should the developer or agent notice?"></textarea>
+      </label>
+
+      <label class="field">
+        <span>Attachments</span>
+        <input id="attachmentsInput" type="file" accept="image/*" multiple>
+      </label>
+
+      <ul id="attachmentsList" class="fileList" aria-label="Attachments"></ul>
+
+      <div class="footerActions">
+        <button id="copyTicketBtn" type="button" class="secondary compactButton" disabled>Copy ticket</button>
+        <button id="sendBtn" type="button" class="compactButton" disabled>Create ticket</button>
+      </div>
+
+      <div id="ticketResult" class="ticketResult" hidden></div>
+
+      <section id="ticketHistorySection" class="ticketHistory" hidden>
+        <div class="sectionHeader">
+          <h2>Recent tickets</h2>
+          <button id="clearTicketHistoryBtn" type="button" class="linkButton">Clear</button>
+        </div>
+        <ul id="ticketHistoryList" class="ticketHistoryList" aria-label="Recent tickets"></ul>
+      </section>
+
+      <p id="status" class="status" role="status"></p>
+
+    </main>
+    <script src="src/popup.js"></script>
+  </body>
+</html>

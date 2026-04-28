@@ -1,0 +1,21 @@
+[Unit]
+Description=Frami Backend
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=frami
+Group=frami
+WorkingDirectory=/opt/frami
+ExecStart=/opt/frami/frami-backend -addr 127.0.0.1:8787 -base-url https://frami.kenkai.io -data-dir /opt/frami/data -token-file /opt/frami/tokens -privacy-file /opt/frami/privacy-policy.html -privacy-contact privacy@kenkai.io
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/opt/frami/data
+
+[Install]
+WantedBy=multi-user.target

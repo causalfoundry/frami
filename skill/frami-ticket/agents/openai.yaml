@@ -1,0 +1,7 @@
+interface:
+  display_name: "Frami Ticket"
+  short_description: "Fetch visual bug tickets for agents"
+  default_prompt: "Use $frami-ticket to fetch FRAMI-ABC123 and inspect the screenshots."
+
+policy:
+  allow_implicit_invocation: true
