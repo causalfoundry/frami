@@ -310,6 +310,9 @@ def render_summary(ticket, ticket_id, output_dir, extracted):
             element = screenshot.get("element")
             if isinstance(element, dict):
                 add_field(lines, "Element", element.get("selector") or element.get("tag"))
+                add_field(lines, "Element page URL", element.get("pageUrl"))
+                add_field(lines, "Element role", element.get("role"))
+                add_field(lines, "Element aria-label", element.get("ariaLabel"))
                 add_field(lines, "Element text", element.get("text"))
                 style = element.get("computedStyle")
                 if isinstance(style, dict):

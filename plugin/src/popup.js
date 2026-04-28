@@ -3,6 +3,7 @@ const MAX_TICKET_HISTORY = 30;
 const selectAreaBtn = document.querySelector("#selectAreaBtn");
 const selectAreaEmptyBtn = document.querySelector("#selectAreaEmptyBtn");
 const selectElementBtn = document.querySelector("#selectElementBtn");
+const selectElementEmptyBtn = document.querySelector("#selectElementEmptyBtn");
 const settingsBtn = document.querySelector("#settingsBtn");
 const sendBtn = document.querySelector("#sendBtn");
 const copyTicketBtn = document.querySelector("#copyTicketBtn");
@@ -71,6 +72,7 @@ async function init() {
   selectAreaBtn.addEventListener("click", startAreaSelection);
   selectAreaEmptyBtn.addEventListener("click", startAreaSelection);
   selectElementBtn.addEventListener("click", startElementSelection);
+  selectElementEmptyBtn.addEventListener("click", startElementSelection);
   settingsBtn.addEventListener("click", toggleSettingsPanel);
   sendBtn.addEventListener("click", createTicket);
   copyTicketBtn.addEventListener("click", copyTicket);
@@ -228,6 +230,7 @@ async function clearCaptures() {
   screenshots = [];
   attachments = [];
   attachmentsInput.value = "";
+  commentInput.value = "";
   currentCapture = null;
   previewImage.hidden = true;
   previewImage.removeAttribute("src");
@@ -237,7 +240,7 @@ async function clearCaptures() {
   await persistDraft();
   await chrome.action.setBadgeText({ text: "" });
   resetTicket();
-  setBusy(false, "Screenshots cleared.");
+  setBusy(false, "Draft cleared.");
 }
 
 async function clearTicketHistory() {
@@ -657,6 +660,7 @@ function renderHistoryView() {
   selectAreaBtn.disabled = busy || viewingHistory;
   selectAreaEmptyBtn.disabled = busy || viewingHistory;
   selectElementBtn.disabled = busy || viewingHistory;
+  selectElementEmptyBtn.disabled = busy || viewingHistory;
   settingsBtn.disabled = busy;
   sendBtn.disabled = busy || viewingHistory || !currentCapture;
   copyTicketBtn.disabled = busy || !lastTicketId;

@@ -147,9 +147,17 @@ p {
   line-height: 1.45;
 }
 
-.emptyState button {
+.emptyActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
   margin-top: 2px;
+}
+
+.emptyActions button {
   min-width: 118px;
+  padding: 0 12px;
 }
 
 .field {

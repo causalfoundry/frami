@@ -273,16 +273,20 @@ function startElementSelection() {
   };
 
   const clickHandler = (event) => {
-    if (!selectedElement || !selectedRect || selectedRect.width < 1 || selectedRect.height < 1) {
+    const target = selectedElement || getInspectableElement(event.clientX, event.clientY);
+    const rect = selectedRect || (target ? clampRectToViewport(target.getBoundingClientRect()) : null);
+    if (!target || !rect || rect.width < 1 || rect.height < 1) {
       return;
     }
 
+    selectedElement = target;
+    selectedRect = rect;
     event.preventDefault();
     event.stopPropagation();
     document.removeEventListener("pointermove", pointerMoveHandler, true);
     document.removeEventListener("click", clickHandler, true);
     tip.textContent = "Add a comment, then save this element.";
-    const elementContext = describeSelectedElement(selectedElement, selectedRect);
+    const elementContext = describeSelectedElement(target, rect);
     showCommentPrompt(overlay, tip, selectedRect, cleanup, saveSelection, {
       title: "Save selected element",
       tip: "Add a comment, then save this element."
@@ -337,13 +341,13 @@ function showCommentPrompt(overlay, tip, selectedRect, cleanup, saveSelection, o
 
   const prompt = document.createElement("div");
   prompt.id = "frami-comment-prompt";
-  const promptPosition = getPromptPosition(selectedRect, 320, 168);
+  const promptPosition = getPromptPosition(selectedRect, 340, context ? 286 : 168);
   Object.assign(prompt.style, {
     position: "fixed",
     left: `${promptPosition.x}px`,
     top: `${promptPosition.y}px`,
     zIndex: "2147483647",
-    width: "320px",
+    width: "340px",
     boxSizing: "border-box",
     border: "1px solid #cfd6e4",
     borderRadius: "8px",
@@ -419,9 +423,102 @@ function showCommentPrompt(overlay, tip, selectedRect, cleanup, saveSelection, o
   });
 
   actions.append(dismiss, save);
-  prompt.append(style, title, textarea, actions);
+  const overview = context ? createElementOverview(context) : null;
+  prompt.append(style, title);
+  if (overview) {
+    prompt.append(overview);
+  }
+  prompt.append(textarea, actions);
   overlay.append(prompt);
   textarea.focus();
+}
+
+function createElementOverview(context) {
+  const style = context.computedStyle || {};
+  const summary = document.createElement("div");
+  Object.assign(summary.style, {
+    display: "grid",
+    gap: "6px",
+    margin: "0 0 10px",
+    border: "1px solid #d9e6dc",
+    borderRadius: "8px",
+    padding: "8px",
+    background: "#f5fbf8",
+    color: "#1f3b32",
+    font: "12px/1.35 system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
+  });
+
+  const selector = document.createElement("div");
+  selector.textContent = context.selector || context.tag || "Selected element";
+  selector.title = context.selector || "";
+  Object.assign(selector.style, {
+    overflow: "hidden",
+    color: "#0f7f63",
+    fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+    fontWeight: "800",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap"
+  });
+
+  const meta = document.createElement("div");
+  meta.textContent = [
+    context.tag,
+    `${Math.round(context.rect?.width || 0)} x ${Math.round(context.rect?.height || 0)}`,
+    context.role ? `role ${context.role}` : "",
+    context.ariaLabel ? `aria ${context.ariaLabel.slice(0, 72)}` : "",
+    style.display,
+    style.fontSize
+  ].filter(Boolean).join(" · ");
+  Object.assign(meta.style, {
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+    color: "#475467"
+  });
+
+  const text = document.createElement("div");
+  const textPreview = context.text ? context.text.slice(0, 180) : "No visible text";
+  text.textContent = textPreview;
+  Object.assign(text.style, {
+    display: "-webkit-box",
+    overflow: "hidden",
+    color: "#344054",
+    WebkitBoxOrient: "vertical",
+    WebkitLineClamp: "3"
+  });
+
+  const chips = document.createElement("div");
+  Object.assign(chips.style, {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "4px"
+  });
+
+  for (const chip of [
+    style.color ? `color ${style.color}` : "",
+    style.backgroundColor ? `bg ${style.backgroundColor}` : "",
+    style.borderRadius ? `radius ${style.borderRadius}` : ""
+  ].filter(Boolean)) {
+    const chipNode = document.createElement("span");
+    chipNode.textContent = chip;
+    Object.assign(chipNode.style, {
+      maxWidth: "100%",
+      overflow: "hidden",
+      borderRadius: "999px",
+      padding: "3px 7px",
+      color: "#344054",
+      background: "#ffffff",
+      textOverflow: "ellipsis",
+      whiteSpace: "nowrap"
+    });
+    chips.append(chipNode);
+  }
+
+  summary.append(selector, meta, text);
+  if (chips.childElementCount) {
+    summary.append(chips);
+  }
+  return summary;
 }
 
 function getPromptPosition(rect, promptWidth, promptHeight) {
@@ -573,20 +670,23 @@ function describeSelectedElement(element, rect) {
     tag: element.tagName.toLowerCase(),
     id: element.id || "",
     className: typeof element.className === "string" ? element.className : "",
+    role: element.getAttribute("role") || "",
+    ariaLabel: element.getAttribute("aria-label") || "",
     selector: getCssSelector(element),
     text: (element.textContent || "").trim().replace(/\s+/g, " ").slice(0, 1200),
     outerHTML: getSanitizedOuterHTML(element),
     attributes: getElementAttributes(element),
     rect,
+    pageUrl: location.href,
     computedStyle: getElementComputedStyle(element)
   };
 }
 
 function getElementAttributes(element) {
-  const sensitive = new Set(["value", "srcdoc"]);
   const attributes = {};
   for (const attribute of Array.from(element.attributes || [])) {
-    if (sensitive.has(attribute.name.toLowerCase())) {
+    const name = attribute.name.toLowerCase();
+    if (isSensitiveAttribute(name) || name.startsWith("on")) {
       continue;
     }
     attributes[attribute.name] = attribute.value.slice(0, 300);
@@ -597,6 +697,7 @@ function getElementAttributes(element) {
 function getSanitizedOuterHTML(element) {
   const clone = element.cloneNode(true);
   clone.querySelectorAll?.("script, style, noscript, iframe").forEach((node) => node.remove());
+  sanitizeCloneAttributes(clone);
   clone.querySelectorAll?.("input, textarea, select").forEach((node) => {
     node.removeAttribute("value");
     node.removeAttribute("checked");
@@ -607,6 +708,28 @@ function getSanitizedOuterHTML(element) {
   });
 
   return clone.outerHTML.slice(0, 6000);
+}
+
+function sanitizeCloneAttributes(root) {
+  const nodes = [root, ...Array.from(root.querySelectorAll?.("*") || [])];
+  for (const node of nodes) {
+    for (const attribute of Array.from(node.attributes || [])) {
+      const name = attribute.name.toLowerCase();
+      if (isSensitiveAttribute(name) || name.startsWith("on")) {
+        node.removeAttribute(attribute.name);
+      } else if (attribute.value.length > 500) {
+        node.setAttribute(attribute.name, `${attribute.value.slice(0, 500)}...`);
+      }
+    }
+  }
+}
+
+function isSensitiveAttribute(name) {
+  return (
+    name === "value" ||
+    name === "srcdoc" ||
+    /(?:token|secret|password|passwd|credential|auth|authorization|session|cookie|csrf|jwt|api[-_]?key)/i.test(name)
+  );
 }
 
 function getElementComputedStyle(element) {
@@ -688,6 +811,9 @@ function cssEscape(value) {
 }
 
 function clamp(value, min, max) {
+  if (max < min) {
+    return min;
+  }
   return Math.min(Math.max(value, min), max);
 }
 
