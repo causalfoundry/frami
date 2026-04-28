@@ -161,14 +161,20 @@ resolve_config_token() {
 install_one() {
   local target_dir="$1"
   local label="$2"
+  local tmp_dir
 
-  mkdir -p "$target_dir/scripts" "$target_dir/agents"
-  cp "$source_dir/SKILL.md" "$target_dir/SKILL.md"
-  cp "$source_dir/scripts/fetch_ticket.py" "$target_dir/scripts/fetch_ticket.py"
-  cp "$source_dir/agents/openai.yaml" "$target_dir/agents/openai.yaml"
-  chmod +x "$target_dir/scripts/fetch_ticket.py"
+  tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/frami-skill.XXXXXX")"
+  mkdir -p "$tmp_dir/scripts" "$tmp_dir/agents"
+  cp "$source_dir/SKILL.md" "$tmp_dir/SKILL.md"
+  cp "$source_dir/scripts/fetch_ticket.py" "$tmp_dir/scripts/fetch_ticket.py"
+  cp "$source_dir/agents/openai.yaml" "$tmp_dir/agents/openai.yaml"
+  chmod +x "$tmp_dir/scripts/fetch_ticket.py"
 
-  echo "Installed Frami skill for $label: $target_dir"
+  rm -rf "$target_dir"
+  mkdir -p "$(dirname "$target_dir")"
+  mv "$tmp_dir" "$target_dir"
+
+  echo "Installed or refreshed Frami skill for $label: $target_dir"
 }
 
 if [[ -f "$config_file" ]]; then
