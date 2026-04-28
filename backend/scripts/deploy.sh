@@ -7,9 +7,9 @@ Usage:
   backend/scripts/deploy.sh user@vm [options]
 
 Options:
-  --domain DOMAIN          Nginx server_name. Defaults to frami.kenkai.io.
-  --base-url URL           Public base URL. Defaults to http://DOMAIN or http://HOST.
-  --privacy-contact EMAIL  Contact email shown on /privacy. Defaults to privacy@kenkai.io.
+  --domain DOMAIN          Nginx server_name. Defaults to _.
+  --base-url URL           Public base URL. Defaults to https://DOMAIN or http://HOST.
+  --privacy-contact EMAIL  Contact email shown on /privacy. Defaults to privacy@example.com.
   --token TOKEN            Ensure this token exists in /opt/frami/tokens.
   --token-file FILE        Upload newline-delimited token file to /opt/frami/tokens.
   --ssh-port PORT          SSH port. Defaults to 22.
@@ -30,11 +30,11 @@ fi
 TARGET="$1"
 shift
 
-DOMAIN="frami.kenkai.io"
+DOMAIN="_"
 BASE_URL=""
 TOKEN=""
 TOKEN_FILE=""
-PRIVACY_CONTACT="privacy@kenkai.io"
+PRIVACY_CONTACT="privacy@example.com"
 SSH_PORT="22"
 WITH_CERTBOT="false"
 SKIP_NGINX="false"
@@ -103,6 +103,11 @@ if [[ -n "$TOKEN" && -n "$TOKEN_FILE" ]]; then
   exit 2
 fi
 
+if [[ "$WITH_CERTBOT" == "true" && "$DOMAIN" == "_" ]]; then
+  echo "--with-certbot requires --domain with a real DNS name." >&2
+  exit 2
+fi
+
 echo "Building frami-backend for linux/amd64..."
 (
   cd "$BACKEND_DIR"
@@ -154,7 +159,7 @@ EOF
 escaped_privacy_contact="${PRIVACY_CONTACT//\\/\\\\}"
 escaped_privacy_contact="${escaped_privacy_contact//&/\\&}"
 escaped_privacy_contact="${escaped_privacy_contact//|/\\|}"
-sed "s|privacy@kenkai.io|$escaped_privacy_contact|g" "$BACKEND_DIR/privacy-policy.html" > "$BUILD_DIR/privacy-policy.html"
+sed "s|privacy@example.com|$escaped_privacy_contact|g" "$BACKEND_DIR/privacy-policy.html" > "$BUILD_DIR/privacy-policy.html"
 
 SSH=(ssh -p "$SSH_PORT" "$TARGET")
 SCP=(scp -P "$SSH_PORT")

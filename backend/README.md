@@ -32,6 +32,13 @@ Public privacy policy page:
 curl -sS http://127.0.0.1:8787/privacy
 ```
 
+Verify a token:
+
+```sh
+curl -sS http://127.0.0.1:8787/auth/verify \
+  -H 'Authorization: Bearer dev-token'
+```
+
 The deploy script installs `backend/privacy-policy.html` to:
 
 ```text

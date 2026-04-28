@@ -203,7 +203,7 @@ async function saveToken() {
   const nextServerUrl = normalizeServerUrl(serverUrlInput.value);
   const token = tokenInput.value.trim();
   if (!nextServerUrl) {
-    setStatus("Enter a backend URL before saving.");
+    setStatus("Enter a backend URL, for example https://frami.example.com or frami.example.com.");
     serverUrlInput.focus();
     return;
   }
@@ -451,7 +451,22 @@ function renderTokenPanel(forceOpen = false) {
 }
 
 function normalizeServerUrl(value) {
-  return (value || "").trim().replace(/\/+$/, "");
+  let url = (value || "").trim().replace(/\/+$/, "");
+  if (!url) {
+    return "";
+  }
+  if (!/^https?:\/\//i.test(url)) {
+    url = `https://${url}`;
+  }
+  try {
+    const parsed = new URL(url);
+    if (!["http:", "https:"].includes(parsed.protocol) || !parsed.host) {
+      return "";
+    }
+    return parsed.toString().replace(/\/+$/, "");
+  } catch {
+    return "";
+  }
 }
 
 function canAccessTab(url) {

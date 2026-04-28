@@ -69,7 +69,7 @@ def load_ticket(args):
         raise SystemExit("Missing or invalid ticket id. Expected FRAMI-ABC123.")
 
     config = load_config()
-    server_url = resolve_server_url(args, config).rstrip("/")
+    server_url = normalize_server_url(resolve_server_url(args, config))
     token = resolve_token(args, config)
     url = f"{server_url}/tickets/{ticket_id}"
     request = urllib.request.Request(
@@ -114,7 +114,19 @@ def resolve_server_url(args, config):
             value = path.read_text(encoding="utf-8").strip()
             if value:
                 return value
-    raise SystemExit("Missing server URL. Set FRAMI_SERVER_URL or create ~/.frami/config with url=...")
+    raise SystemExit("Missing server URL. Set FRAMI_SERVER_URL or create ~/.frami/config with url=https://frami.example.com")
+
+
+def normalize_server_url(value):
+    url = value.strip().rstrip("/")
+    if not url:
+        raise SystemExit("Missing server URL. Use https://frami.example.com or a bare domain like frami.example.com.")
+    if not re.match(r"^https?://", url):
+        url = f"https://{url}"
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise SystemExit("Invalid server URL. Use https://frami.example.com or a bare domain like frami.example.com.")
+    return url
 
 
 def resolve_token(args, config):

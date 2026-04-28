@@ -45,6 +45,8 @@ EOF
 chmod 600 ~/.frami/config
 ```
 
+The installer prompts for a backend domain without `https://`, then writes `url=https://...` into `~/.frami/config` and verifies it with `GET <url>/auth/verify`. For local dev overrides, use `FRAMI_SERVER_URL=http://127.0.0.1:8787`.
+
 For a repo-specific override, create `.frami/config` in the working repo and keep `.frami/` ignored by git.
 
 ## Errors

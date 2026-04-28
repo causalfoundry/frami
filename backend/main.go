@@ -61,7 +61,7 @@ func main() {
 	dataDir := flag.String("data-dir", envOr("FRAMI_DATA_DIR", "/opt/frami/data"), "data directory")
 	tokenFile := flag.String("token-file", envOr("FRAMI_TOKEN_FILE", "/opt/frami/tokens"), "newline-delimited bearer token file")
 	privacyFile := flag.String("privacy-file", envOr("FRAMI_PRIVACY_FILE", "/opt/frami/privacy-policy.html"), "privacy policy HTML file")
-	privacyContact := flag.String("privacy-contact", envOr("FRAMI_PRIVACY_CONTACT", "privacy@kenkai.io"), "privacy contact email")
+	privacyContact := flag.String("privacy-contact", envOr("FRAMI_PRIVACY_CONTACT", "privacy@example.com"), "privacy contact email")
 	flag.Parse()
 
 	tokens, err := loadTokens(*tokenFile)
@@ -85,6 +85,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", s.handleHealth)
 	mux.HandleFunc("GET /privacy", s.handlePrivacy)
+	mux.HandleFunc("GET /auth/verify", s.withAuth(s.handleAuthVerify))
 	mux.HandleFunc("POST /tickets", s.withAuth(s.handleCreateTicket))
 	mux.HandleFunc("GET /tickets/{id}", s.withAuth(s.handleGetTicket))
 
@@ -99,6 +100,14 @@ func (s *server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
 		"ok":      true,
 		"service": "frami-backend",
+	})
+}
+
+func (s *server) handleAuthVerify(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]any{
+		"ok":            true,
+		"service":       "frami-backend",
+		"authenticated": true,
 	})
 }
 
@@ -118,7 +127,7 @@ func (s *server) handlePrivacy(w http.ResponseWriter, r *http.Request) {
 
 	contact := s.privacyContact
 	if contact == "" {
-		contact = "privacy@kenkai.io"
+		contact = "privacy@example.com"
 	}
 	contact = html.EscapeString(contact)
 

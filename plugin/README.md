@@ -19,7 +19,7 @@ The popup captures selected areas, adds notes and optional image attachments, th
 POST <server-url>/tickets
 ```
 
-The backend URL is configured in the popup settings. The popup trims trailing slashes and does not assume a runtime default URL.
+The backend URL is configured in the popup settings. Use a full URL like `https://frami.example.com`, or enter a bare domain like `frami.example.com` and the popup normalizes it to HTTPS. Local dev should include scheme and port, for example `http://127.0.0.1:8787`.
 
 Draft screenshots, comments, and attachments are stored locally until the user clears them or creates a ticket.
 

@@ -13,6 +13,25 @@ dist/     Built Chrome extension ZIP
 
 ## Chrome Extension
 
+Install for a teammate from a public GitHub repo:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/causalfoundry/frami/main/install.sh | bash
+```
+
+That installs the Chrome extension source to:
+
+```text
+~/frami/plugin
+```
+
+Then load it in Chrome:
+
+1. Open `chrome://extensions`.
+2. Enable **Developer mode**.
+3. Click **Load unpacked**.
+4. Select `~/frami/plugin`.
+
 Local test install:
 
 1. Open `chrome://extensions`.
@@ -20,7 +39,7 @@ Local test install:
 3. Click **Load unpacked**.
 4. Select `plugin/`.
 
-The popup requires an explicit backend URL and token in **Settings**. It does not assume a runtime default URL.
+The popup requires an explicit backend URL and token in **Settings**. Use a full URL like `https://frami.example.com`, or enter the bare domain `frami.example.com` and Frami will normalize it to HTTPS. Local dev should include scheme and port, for example `http://127.0.0.1:8787`.
 
 Draft screenshots, comments, and attachments are stored locally until the user clears them or creates a ticket.
 
@@ -63,6 +82,13 @@ The privacy policy is served at:
 https://<backend-domain>/privacy
 ```
 
+Token verification endpoint:
+
+```text
+GET https://<backend-domain>/auth/verify
+Authorization: Bearer <token>
+```
+
 The deployed policy file lives at:
 
 ```text
@@ -77,10 +103,17 @@ Install the Frami ticket skill for Codex and Claude:
 ./skill/install.sh
 ```
 
-If `~/.frami/config` is missing, the installer prompts for the backend URL and token. For noninteractive install, provide env vars:
+The skill files are installed to each agent's normal skill directory:
+
+```text
+~/.codex/skills/frami-ticket
+~/.claude/skills/frami-ticket
+```
+
+`~/.frami/config` is only the Frami URL/token config, not the skill itself. If it is missing, the installer prompts for the backend domain and token, adds `https://` itself, and verifies them against `/auth/verify`. For noninteractive install, provide env vars:
 
 ```sh
-FRAMI_SERVER_URL=https://your-frami-server.example.com FRAMI_TOKEN=token-value ./skill/install.sh
+FRAMI_DOMAIN=your-frami-server.example.com FRAMI_TOKEN=token-value ./skill/install.sh
 ```
 
 The installer writes:
@@ -95,6 +128,8 @@ with:
 url=https://your-frami-server.example.com
 token=token-value
 ```
+
+Enter a domain such as `frami.example.com`, not `https://frami.example.com`; the installer stores and verifies it as `https://frami.example.com`.
 
 Then ask Codex:
 
