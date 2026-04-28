@@ -25,6 +25,8 @@ That installs the Chrome extension source to:
 ~/frami/plugin
 ```
 
+It also installs the Frami ticket skill for Codex and Claude.
+
 Then load it in Chrome:
 
 1. Open `chrome://extensions`.

@@ -92,4 +92,5 @@ echo "3. Click Load unpacked"
 echo "4. Select $install_dir/plugin"
 echo
 
+echo "Installing Frami agent skill..."
 "$install_dir/skill/install.sh"
