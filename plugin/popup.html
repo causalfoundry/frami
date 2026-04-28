@@ -51,6 +51,14 @@
       </div>
       <ul id="screenshotsList" class="captureList" aria-label="Screenshots"></ul>
 
+      <section id="elementDetailPanel" class="elementDetailPanel" hidden>
+        <div class="sectionHeader">
+          <h2 id="elementDetailTitle">DOM detail</h2>
+          <button id="closeElementDetailBtn" type="button" class="linkButton">Close</button>
+        </div>
+        <textarea id="elementDetailText" readonly spellcheck="false"></textarea>
+      </section>
+
       <section id="tokenPanel" class="tokenPanel" hidden>
         <div>
           <strong>Backend settings</strong>

@@ -17,6 +17,10 @@ const attachmentsInput = document.querySelector("#attachmentsInput");
 const attachmentsList = document.querySelector("#attachmentsList");
 const screenshotsList = document.querySelector("#screenshotsList");
 const captureHeaderLabel = document.querySelector("#captureHeaderLabel");
+const elementDetailPanel = document.querySelector("#elementDetailPanel");
+const elementDetailTitle = document.querySelector("#elementDetailTitle");
+const elementDetailText = document.querySelector("#elementDetailText");
+const closeElementDetailBtn = document.querySelector("#closeElementDetailBtn");
 const previewImage = document.querySelector("#previewImage");
 const emptyState = document.querySelector("#emptyState");
 const emptyStateTitle = document.querySelector("#emptyStateTitle");
@@ -77,6 +81,7 @@ async function init() {
   sendBtn.addEventListener("click", createTicket);
   copyTicketBtn.addEventListener("click", copyTicket);
   clearCapturesBtn.addEventListener("click", clearCaptures);
+  closeElementDetailBtn.addEventListener("click", hideElementDetail);
   saveTokenBtn.addEventListener("click", saveToken);
   clearTicketHistoryBtn.addEventListener("click", clearTicketHistory);
   returnToDraftBtn.addEventListener("click", showCurrentDraft);
@@ -235,6 +240,7 @@ async function clearCaptures() {
   previewImage.hidden = true;
   previewImage.removeAttribute("src");
   emptyState.hidden = false;
+  hideElementDetail();
   renderAttachments();
   renderScreenshots();
   await persistDraft();
@@ -429,6 +435,8 @@ function renderScreenshots() {
   screenshots.forEach((screenshot, index) => {
     const item = document.createElement("li");
     item.className = "captureListItem";
+    const actions = document.createElement("div");
+    actions.className = "captureListActions";
 
     const button = document.createElement("button");
     button.type = "button";
@@ -446,12 +454,30 @@ function renderScreenshots() {
     deleteButton.textContent = "Delete";
     deleteButton.addEventListener("click", () => deleteScreenshot(screenshot.id));
 
+    const detailButton = document.createElement("button");
+    detailButton.type = "button";
+    detailButton.className = "captureDetailButton";
+    detailButton.title = "Show DOM details";
+    detailButton.setAttribute("aria-label", `Show DOM details for screenshot ${index + 1}`);
+    detailButton.textContent = "Detail";
+    detailButton.addEventListener("click", () => showElementDetail(screenshot, index));
+
     item.append(button);
     if (!activeHistoryTicket) {
-      item.append(deleteButton);
+      actions.append(deleteButton);
+    }
+    if (screenshot.element) {
+      actions.append(detailButton);
+    }
+    if (actions.childElementCount) {
+      item.append(actions);
     }
     screenshotsList.append(item);
   });
+
+  if (elementDetailPanel.dataset.captureId && !screenshots.some((screenshot) => screenshot.id === elementDetailPanel.dataset.captureId)) {
+    hideElementDetail();
+  }
 }
 
 async function deleteScreenshot(id) {
@@ -465,6 +491,11 @@ async function deleteScreenshot(id) {
 
   if (wasActive) {
     currentCapture = screenshots[index] || screenshots[index - 1] || screenshots.at(-1) || null;
+  }
+
+  const activeDetailId = elementDetailPanel.dataset.captureId;
+  if (activeDetailId === id) {
+    hideElementDetail();
   }
 
   showCurrentCapture();
@@ -531,6 +562,27 @@ function showCurrentCapture() {
   previewImage.hidden = false;
   emptyState.hidden = true;
   renderHistoryView();
+}
+
+function showElementDetail(screenshot, index) {
+  const detail = formatElementDetail(screenshot);
+  if (!detail) {
+    setStatus("No DOM details for this screenshot.");
+    return;
+  }
+
+  elementDetailTitle.textContent = `DOM detail ${index + 1}`;
+  elementDetailText.value = detail;
+  elementDetailPanel.dataset.captureId = screenshot.id || "";
+  elementDetailPanel.hidden = false;
+  selectCapture(screenshot.id);
+  elementDetailText.focus();
+}
+
+function hideElementDetail() {
+  elementDetailPanel.hidden = true;
+  elementDetailPanel.dataset.captureId = "";
+  elementDetailText.value = "";
 }
 
 function toTicketScreenshot(screenshot) {
@@ -716,6 +768,39 @@ function getCaptureLabel(screenshot, index) {
   return note
     ? `${index + 1}. ${source}: ${note}`
     : `${index + 1}. ${source}: ${element || title}`;
+}
+
+function formatElementDetail(screenshot) {
+  const element = screenshot.element;
+  if (!element || typeof element !== "object") {
+    return "";
+  }
+
+  const pageUrl = element.pageUrl || screenshot.tab?.url || screenshot.page?.url || "";
+  const parts = [
+    ["selector", element.selector],
+    ["tag", element.tag],
+    ["pageUrl", pageUrl],
+    ["role", element.role],
+    ["ariaLabel", element.ariaLabel],
+    ["text", element.text],
+    ["attributes", formatJsonBlock(element.attributes)],
+    ["computedStyle", formatJsonBlock(element.computedStyle)],
+    ["outerHTML", element.outerHTML]
+  ];
+
+  return parts
+    .filter(([, value]) => value !== undefined && value !== null && value !== "")
+    .map(([label, value]) => `${label}:\n${String(value).trim()}`)
+    .join("\n\n");
+}
+
+function formatJsonBlock(value) {
+  if (!value || typeof value !== "object") {
+    return "";
+  }
+
+  return JSON.stringify(value, null, 2);
 }
 
 function normalizeTicketResponse(body) {

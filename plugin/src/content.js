@@ -341,13 +341,16 @@ function showCommentPrompt(overlay, tip, selectedRect, cleanup, saveSelection, o
 
   const prompt = document.createElement("div");
   prompt.id = "frami-comment-prompt";
-  const promptPosition = getPromptPosition(selectedRect, 340, context ? 286 : 168);
+  const promptWidth = context ? Math.min(440, Math.max(340, window.innerWidth - 24)) : 340;
+  const promptPosition = getPromptPosition(selectedRect, promptWidth, context ? 458 : 168);
   Object.assign(prompt.style, {
     position: "fixed",
     left: `${promptPosition.x}px`,
     top: `${promptPosition.y}px`,
     zIndex: "2147483647",
-    width: "340px",
+    width: `${promptWidth}px`,
+    maxHeight: "calc(100vh - 24px)",
+    overflowY: "auto",
     boxSizing: "border-box",
     border: "1px solid #cfd6e4",
     borderRadius: "8px",
@@ -424,9 +427,13 @@ function showCommentPrompt(overlay, tip, selectedRect, cleanup, saveSelection, o
 
   actions.append(dismiss, save);
   const overview = context ? createElementOverview(context) : null;
+  const textDetails = context ? createElementTextDetails(context) : null;
   prompt.append(style, title);
   if (overview) {
     prompt.append(overview);
+  }
+  if (textDetails) {
+    prompt.append(textDetails);
   }
   prompt.append(textarea, actions);
   overlay.append(prompt);
@@ -519,6 +526,75 @@ function createElementOverview(context) {
     summary.append(chips);
   }
   return summary;
+}
+
+function createElementTextDetails(context) {
+  const details = document.createElement("details");
+  details.open = true;
+  Object.assign(details.style, {
+    margin: "0 0 10px",
+    border: "1px solid #d9dee8",
+    borderRadius: "8px",
+    background: "#f8fafc"
+  });
+
+  const summary = document.createElement("summary");
+  summary.textContent = "DOM context";
+  Object.assign(summary.style, {
+    padding: "8px 10px",
+    color: "#344054",
+    cursor: "pointer",
+    font: "700 12px system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
+  });
+
+  const text = document.createElement("textarea");
+  text.readOnly = true;
+  text.value = formatElementTextContext(context);
+  Object.assign(text.style, {
+    display: "block",
+    width: "calc(100% - 16px)",
+    minHeight: "150px",
+    maxHeight: "220px",
+    margin: "0 8px 8px",
+    boxSizing: "border-box",
+    border: "1px solid #d9dee8",
+    borderRadius: "6px",
+    padding: "8px",
+    resize: "vertical",
+    color: "#18212f",
+    background: "#ffffff",
+    font: "11px/1.45 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+    whiteSpace: "pre"
+  });
+
+  details.append(summary, text);
+  return details;
+}
+
+function formatElementTextContext(context) {
+  const parts = [
+    ["selector", context.selector],
+    ["tag", context.tag],
+    ["pageUrl", context.pageUrl],
+    ["role", context.role],
+    ["ariaLabel", context.ariaLabel],
+    ["text", context.text],
+    ["attributes", formatJsonBlock(context.attributes)],
+    ["computedStyle", formatJsonBlock(context.computedStyle)],
+    ["outerHTML", context.outerHTML]
+  ];
+
+  return parts
+    .filter(([, value]) => value !== undefined && value !== null && value !== "")
+    .map(([label, value]) => `${label}:\n${String(value).trim()}`)
+    .join("\n\n");
+}
+
+function formatJsonBlock(value) {
+  if (!value || typeof value !== "object") {
+    return "";
+  }
+  return JSON.stringify(value, null, 2);
 }
 
 function getPromptPosition(rect, promptWidth, promptHeight) {
