@@ -13,7 +13,7 @@ After edits, click the extension card's reload button in `chrome://extensions`.
 
 ## What It Sends
 
-The popup captures selected areas, adds notes and optional image attachments, then sends:
+The popup captures selected areas or selected DOM elements, adds notes and optional image attachments, then sends:
 
 ```text
 POST <server-url>/tickets
@@ -23,7 +23,7 @@ The backend URL is configured in the popup settings. Use a full URL like `https:
 
 Draft screenshots, comments, and attachments are stored locally until the user clears them or creates a ticket.
 
-The popup can also open an existing ticket ID, fetch it from the configured backend, and preview the stored screenshots and attachments without replacing the current draft.
+Element captures include the screenshot plus selector, sanitized `outerHTML`, visible text, bounding rect, page URL, and key computed styles. The popup can also open an existing ticket ID, fetch it from the configured backend, and preview the stored screenshots and attachments without replacing the current draft.
 
 For now, ticket creation uses the saved token as:
 

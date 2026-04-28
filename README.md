@@ -44,7 +44,7 @@ Local test install:
 
 The popup requires an explicit backend URL and token in **Settings**. Use a full URL like `https://frami.example.com`, or enter the bare domain `frami.example.com` and Frami will normalize it to HTTPS. Local dev should include scheme and port, for example `http://127.0.0.1:8787`.
 
-Draft screenshots, comments, and attachments are stored locally until the user clears them or creates a ticket.
+Draft screenshots, DOM element context, comments, and attachments are stored locally until the user clears them or creates a ticket.
 
 The extension posts tickets to:
 

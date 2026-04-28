@@ -307,6 +307,15 @@ def render_summary(ticket, ticket_id, output_dir, extracted):
             crop = screenshot.get("crop")
             if crop:
                 add_field(lines, "Crop", json.dumps(crop, ensure_ascii=False))
+            element = screenshot.get("element")
+            if isinstance(element, dict):
+                add_field(lines, "Element", element.get("selector") or element.get("tag"))
+                add_field(lines, "Element text", element.get("text"))
+                style = element.get("computedStyle")
+                if isinstance(style, dict):
+                    add_field(lines, "Element style", json.dumps(style, ensure_ascii=False))
+                if element.get("outerHTML"):
+                    lines.extend(["", "```html", str(element["outerHTML"]).strip(), "```"])
             image_path = find_extracted_path(extracted, "screenshot", index, output_dir)
             add_field(lines, "File", image_path)
             lines.append("")

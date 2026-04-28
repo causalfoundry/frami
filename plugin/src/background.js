@@ -10,7 +10,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message?.type === "AREA_SELECTED") {
-    captureSelectedArea(sender.tab, message.rect, message.page, message.comment, sendResponse);
+    captureSelectedArea(sender.tab, message.rect, message.page, message.comment, null, sendResponse);
+    return true;
+  }
+
+  if (message?.type === "ELEMENT_SELECTED") {
+    captureSelectedArea(sender.tab, message.rect, message.page, message.comment, message.element, sendResponse);
     return true;
   }
 
@@ -44,7 +49,7 @@ async function captureVisibleTab(sendResponse) {
   }
 }
 
-async function captureSelectedArea(tab, rect, page, comment, sendResponse) {
+async function captureSelectedArea(tab, rect, page, comment, element, sendResponse) {
   try {
     if (!tab?.windowId) {
       throw new Error("No active tab found.");
@@ -60,8 +65,9 @@ async function captureSelectedArea(tab, rect, page, comment, sendResponse) {
       dataUrl: cropped.dataUrl,
       originalDataUrl: dataUrl,
       mimeType: "image/png",
-      mode: "selected-area",
+      mode: element ? "selected-element" : "selected-area",
       crop: cropped.crop,
+      element: element || null,
       note: comment || "",
       capturedAt: new Date().toISOString(),
       tab: getTabMetadata(tab),

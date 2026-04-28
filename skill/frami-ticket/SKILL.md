@@ -1,11 +1,11 @@
 ---
 name: frami-ticket
-description: Fetch and inspect Frami visual bug tickets for coding agents. Use when the user mentions a Frami ticket ID like FRAMI-ABC123, asks the agent to check a Frami ticket, or needs screenshots, notes, attachments, and metadata from the Frami backend brought into the local workspace.
+description: Fetch, inspect, diagnose, and fix Frami visual bug tickets for coding agents. Use when the user mentions a Frami ticket ID like FRAMI-ABC123, asks the agent to check or fix a Frami ticket, or needs screenshots, DOM context, notes, attachments, and metadata from the Frami backend brought into the local workspace.
 ---
 
 # Frami Ticket
 
-Use this skill to fetch a precise visual bug report from the Frami backend and turn it into local context the coding agent can inspect.
+Use this skill to fetch a precise visual bug report from the Frami backend and turn it into an actionable implementation task. The goal is to understand the reported UI problem and fix it when the local codebase contains the relevant code.
 
 ## Workflow
 
@@ -19,7 +19,19 @@ Use this skill to fetch a precise visual bug report from the Frami backend and t
 3. Read `.frami/tickets/FRAMI-ABC123/summary.md` first.
 4. Inspect extracted images in `.frami/tickets/FRAMI-ABC123/screenshots/` and `.frami/tickets/FRAMI-ABC123/attachments/`. Use an image viewer tool when available.
 5. Read `.frami/tickets/FRAMI-ABC123/ticket.json` only when the summary omits needed details.
-6. Use the ticket comment, screenshot notes, and image evidence as the bug report. Verify the related code before editing.
+6. Use the ticket comment, screenshot notes, DOM element context, page URL, and image evidence as the bug report. Verify the related code before editing.
+7. Identify the likely route, component, style, or state responsible for the issue. Search the codebase using page URLs, visible text, selectors, component names, and class names from the ticket.
+8. Implement a focused fix when the cause is reasonably clear. Run the relevant checks available in the repo.
+9. In the final response, summarize the diagnosis, files changed, and verification. Do not merely repeat the ticket contents unless the user only asked for a readout.
+
+## Fixing Guidance
+
+- Treat a Frami ticket as a request to solve the UI bug, not just to describe it.
+- Prefer screenshot evidence for visual intent and DOM context for locating the code.
+- If the ticket includes `element.selector`, `outerHTML`, text, computed styles, or page URL, use those clues to find the owning component.
+- Keep fixes scoped to the reported issue. Avoid unrelated redesigns or broad refactors.
+- If the ticket is ambiguous, make the smallest defensible fix and state the assumption. Ask a question only when the missing information blocks a safe change.
+- If the relevant app cannot be run locally, still inspect and patch the likely source when the code evidence is strong, then say what could not be verified.
 
 ## Configuration
 

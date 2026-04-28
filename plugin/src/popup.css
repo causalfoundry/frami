@@ -44,7 +44,7 @@ textarea {
   display: flex;
   flex: 0 0 auto;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 h1 {
@@ -68,7 +68,7 @@ p {
 
 .captureButton {
   display: inline-flex;
-  min-width: 108px;
+  min-width: 70px;
   height: 34px;
   flex: 0 0 auto;
   align-items: center;
@@ -80,8 +80,14 @@ p {
   cursor: pointer;
 }
 
+.secondaryCapture {
+  border-color: #cfd6e4;
+  color: #18212f;
+  background: #ffffff;
+}
+
 .settingsButton {
-  min-width: 76px;
+  min-width: 72px;
   height: 34px;
   border-color: #cfd6e4;
   color: #18212f;
@@ -321,6 +327,12 @@ button:disabled {
   border-color: #1c5fca;
   color: #12386f;
   background: #eaf3ff;
+}
+
+.captureListButton[data-kind="element"]::before {
+  content: "DOM ";
+  color: #0f7f63;
+  font-weight: 800;
 }
 
 .ticketResult {

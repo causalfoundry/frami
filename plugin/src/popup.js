@@ -2,6 +2,7 @@ const MAX_TICKET_HISTORY = 30;
 
 const selectAreaBtn = document.querySelector("#selectAreaBtn");
 const selectAreaEmptyBtn = document.querySelector("#selectAreaEmptyBtn");
+const selectElementBtn = document.querySelector("#selectElementBtn");
 const settingsBtn = document.querySelector("#settingsBtn");
 const sendBtn = document.querySelector("#sendBtn");
 const copyTicketBtn = document.querySelector("#copyTicketBtn");
@@ -69,6 +70,7 @@ async function init() {
 
   selectAreaBtn.addEventListener("click", startAreaSelection);
   selectAreaEmptyBtn.addEventListener("click", startAreaSelection);
+  selectElementBtn.addEventListener("click", startElementSelection);
   settingsBtn.addEventListener("click", toggleSettingsPanel);
   sendBtn.addEventListener("click", createTicket);
   copyTicketBtn.addEventListener("click", copyTicket);
@@ -145,19 +147,27 @@ async function init() {
 }
 
 async function startAreaSelection() {
+  await startCaptureSelection("START_AREA_SELECTION", "Starting area selection...");
+}
+
+async function startElementSelection() {
+  await startCaptureSelection("START_ELEMENT_SELECTION", "Starting element picker...");
+}
+
+async function startCaptureSelection(messageType, message) {
   if (activeHistoryTicket) {
     return;
   }
 
-  setBusy(true, "Starting area selection...");
+  setBusy(true, message);
 
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab?.id || !canAccessTab(tab.url)) {
-      throw new Error("Area selection is available on normal web pages.");
+      throw new Error("Capture is available on normal web pages.");
     }
 
-    await sendStartAreaMessage(tab.id);
+    await sendStartSelectionMessage(tab.id, messageType);
     window.close();
   } catch (error) {
     setBusy(false, error instanceof Error ? error.message : String(error));
@@ -420,6 +430,7 @@ function renderScreenshots() {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "captureListButton";
+    button.dataset.kind = screenshot.element ? "element" : "area";
     button.dataset.active = screenshot.id === currentCapture?.id ? "true" : "false";
     button.textContent = getCaptureLabel(screenshot, index);
     button.addEventListener("click", () => selectCapture(screenshot.id));
@@ -530,7 +541,8 @@ function toTicketScreenshot(screenshot) {
     note: screenshot.note || screenshot.comment || "",
     tab: screenshot.tab,
     figma: screenshot.figma,
-    page: screenshot.page
+    page: screenshot.page,
+    element: screenshot.element || null
   };
 }
 
@@ -639,11 +651,12 @@ function renderHistoryView() {
     historyViewMeta.textContent = "";
     captureHeaderLabel.textContent = "Draft";
     emptyStateTitle.textContent = "No screenshots yet";
-    emptyStateBody.textContent = "Select the exact area that needs attention. You can repeat this on app and Figma tabs before creating a ticket.";
+    emptyStateBody.textContent = "Capture an area or pick a DOM element. You can repeat this on app and Figma tabs before creating a ticket.";
   }
 
   selectAreaBtn.disabled = busy || viewingHistory;
   selectAreaEmptyBtn.disabled = busy || viewingHistory;
+  selectElementBtn.disabled = busy || viewingHistory;
   settingsBtn.disabled = busy;
   sendBtn.disabled = busy || viewingHistory || !currentCapture;
   copyTicketBtn.disabled = busy || !lastTicketId;
@@ -679,25 +692,26 @@ function canAccessTab(url) {
   return Boolean(url && /^https?:/.test(url));
 }
 
-async function sendStartAreaMessage(tabId) {
+async function sendStartSelectionMessage(tabId, messageType) {
   try {
-    return await chrome.tabs.sendMessage(tabId, { type: "START_AREA_SELECTION" });
+    return await chrome.tabs.sendMessage(tabId, { type: messageType });
   } catch {
     await chrome.scripting.executeScript({
       target: { tabId },
       files: ["src/content.js"]
     });
-    return chrome.tabs.sendMessage(tabId, { type: "START_AREA_SELECTION" });
+    return chrome.tabs.sendMessage(tabId, { type: messageType });
   }
 }
 
 function getCaptureLabel(screenshot, index) {
-  const source = screenshot.figma?.fileKey ? "Figma" : "Tab";
+  const source = screenshot.element ? "Element" : screenshot.figma?.fileKey ? "Figma" : "Tab";
   const title = screenshot.tab?.title || screenshot.page?.title || "Untitled";
   const note = screenshot.note || screenshot.comment || "";
+  const element = screenshot.element?.selector || screenshot.element?.tag || "";
   return note
-    ? `${index + 1}. ${source} area: ${note}`
-    : `${index + 1}. ${source} area: ${title}`;
+    ? `${index + 1}. ${source}: ${note}`
+    : `${index + 1}. ${source}: ${element || title}`;
 }
 
 function normalizeTicketResponse(body) {
