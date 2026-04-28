@@ -26,6 +26,7 @@ That installs the Chrome extension source to:
 ```
 
 It also installs the Frami ticket skill for Codex and Claude.
+If `~/.frami/config` does not exist, the installer prompts for the backend domain and token during this step.
 
 Then load it in Chrome:
 

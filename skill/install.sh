@@ -192,16 +192,18 @@ elif [[ -n "${FRAMI_SERVER_URL:-}" && -n "${FRAMI_TOKEN:-}" ]]; then
   frami_url="$(normalize_server_url "$FRAMI_SERVER_URL")"
   write_config "$frami_url" "$FRAMI_TOKEN"
   echo "Created Frami config from FRAMI_SERVER_URL and FRAMI_TOKEN: $config_file"
-elif [[ -t 0 ]]; then
-  echo
-  echo "Create Frami config for ticket fetching."
-  echo "Enter the backend domain only, for example frami.example.com."
-  echo "Do not include https://; the installer adds it automatically."
-  printf 'Frami backend domain: '
-  read -r frami_domain
-  printf 'Frami token: '
-  read -rs frami_token
-  printf '\n'
+elif [[ -r /dev/tty && -w /dev/tty ]]; then
+  {
+    echo
+    echo "Create Frami config for ticket fetching."
+    echo "Enter the backend domain only, for example frami.example.com."
+    echo "Do not include https://; the installer adds it automatically."
+    printf 'Frami backend domain: '
+  } > /dev/tty
+  read -r frami_domain < /dev/tty
+  printf 'Frami token: ' > /dev/tty
+  read -rs frami_token < /dev/tty
+  printf '\n' > /dev/tty
 
   if [[ -z "$frami_domain" || -z "$frami_token" ]]; then
     echo "Skipped config creation because domain or token was empty." >&2
