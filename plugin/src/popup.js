@@ -14,10 +14,19 @@ const commentInput = document.querySelector("#commentInput");
 const attachmentsInput = document.querySelector("#attachmentsInput");
 const attachmentsList = document.querySelector("#attachmentsList");
 const screenshotsList = document.querySelector("#screenshotsList");
+const captureHeaderLabel = document.querySelector("#captureHeaderLabel");
 const previewImage = document.querySelector("#previewImage");
 const emptyState = document.querySelector("#emptyState");
+const emptyStateTitle = document.querySelector("#emptyStateTitle");
+const emptyStateBody = document.querySelector("#emptyStateBody");
 const pageTitle = document.querySelector("#pageTitle");
 const ticketResult = document.querySelector("#ticketResult");
+const historyViewBar = document.querySelector("#historyViewBar");
+const historyViewTitle = document.querySelector("#historyViewTitle");
+const historyViewMeta = document.querySelector("#historyViewMeta");
+const returnToDraftBtn = document.querySelector("#returnToDraftBtn");
+const ticketLookupInput = document.querySelector("#ticketLookupInput");
+const ticketLookupBtn = document.querySelector("#ticketLookupBtn");
 const ticketHistorySection = document.querySelector("#ticketHistorySection");
 const ticketHistoryList = document.querySelector("#ticketHistoryList");
 const clearTicketHistoryBtn = document.querySelector("#clearTicketHistoryBtn");
@@ -31,6 +40,8 @@ let ticketHistory = [];
 let serverUrl = "";
 let accessToken = "";
 let settingsPanelOpen = false;
+let activeHistoryTicket = null;
+let busy = false;
 
 init();
 
@@ -64,6 +75,14 @@ async function init() {
   clearCapturesBtn.addEventListener("click", clearCaptures);
   saveTokenBtn.addEventListener("click", saveToken);
   clearTicketHistoryBtn.addEventListener("click", clearTicketHistory);
+  returnToDraftBtn.addEventListener("click", showCurrentDraft);
+  ticketLookupBtn.addEventListener("click", openTicketFromLookup);
+  ticketLookupInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      void openTicketFromLookup();
+    }
+  });
   attachmentsInput.addEventListener("change", loadAttachments);
   commentInput.addEventListener("input", saveSettings);
 
@@ -73,21 +92,32 @@ async function init() {
     }
 
     if (changes.draftScreenshots) {
-      screenshots = Array.isArray(changes.draftScreenshots.newValue)
-        ? changes.draftScreenshots.newValue
-        : [];
-      renderScreenshots();
-      selectCapture(changes.selectedCaptureId?.newValue || currentCapture?.id || screenshots.at(-1)?.id || null);
-      void updateBadge();
+      if (activeHistoryTicket) {
+        const draftCount = Array.isArray(changes.draftScreenshots.newValue)
+          ? changes.draftScreenshots.newValue.length
+          : 0;
+        void updateBadge(draftCount);
+      } else {
+        screenshots = Array.isArray(changes.draftScreenshots.newValue)
+          ? changes.draftScreenshots.newValue
+          : [];
+        renderScreenshots();
+        selectCapture(changes.selectedCaptureId?.newValue || currentCapture?.id || screenshots.at(-1)?.id || null);
+        void updateBadge();
+      }
     }
 
     if (changes.attachments) {
-      attachments = Array.isArray(changes.attachments.newValue) ? changes.attachments.newValue : [];
-      renderAttachments();
+      if (!activeHistoryTicket) {
+        attachments = Array.isArray(changes.attachments.newValue) ? changes.attachments.newValue : [];
+        renderAttachments();
+      }
     }
 
     if (changes.lastComment?.newValue !== undefined) {
-      commentInput.value = changes.lastComment.newValue || "";
+      if (!activeHistoryTicket) {
+        commentInput.value = changes.lastComment.newValue || "";
+      }
     }
 
     if (changes.accessToken?.newValue !== undefined) {
@@ -115,6 +145,10 @@ async function init() {
 }
 
 async function startAreaSelection() {
+  if (activeHistoryTicket) {
+    return;
+  }
+
   setBusy(true, "Starting area selection...");
 
   try {
@@ -131,6 +165,10 @@ async function startAreaSelection() {
 }
 
 async function createTicket() {
+  if (activeHistoryTicket) {
+    return;
+  }
+
   if (!screenshots.length) {
     return;
   }
@@ -173,6 +211,10 @@ async function createTicket() {
 }
 
 async function clearCaptures() {
+  if (activeHistoryTicket) {
+    return;
+  }
+
   screenshots = [];
   attachments = [];
   attachmentsInput.value = "";
@@ -196,6 +238,10 @@ async function clearTicketHistory() {
 }
 
 async function saveSettings() {
+  if (activeHistoryTicket) {
+    return;
+  }
+
   await persistDraft();
 }
 
@@ -227,6 +273,10 @@ function toggleSettingsPanel() {
 }
 
 async function persistDraft() {
+  if (activeHistoryTicket) {
+    return;
+  }
+
   await chrome.storage.local.set({
     attachments,
     draftScreenshots: screenshots,
@@ -237,6 +287,11 @@ async function persistDraft() {
 }
 
 async function loadAttachments() {
+  if (activeHistoryTicket) {
+    attachmentsInput.value = "";
+    return;
+  }
+
   const files = Array.from(attachmentsInput.files || []);
   attachments = await Promise.all(files.map(readImageFile));
   renderAttachments();
@@ -255,6 +310,94 @@ async function copyTicket() {
 async function copyTicketFromHistory(ticket) {
   await copyText(ticket.id);
   setStatus(`Copied ${ticket.id}.`);
+}
+
+async function viewTicketFromHistory(ticket) {
+  await viewTicket(ticket, { remember: false });
+}
+
+async function openTicketFromLookup() {
+  const id = normalizeTicketId(ticketLookupInput.value);
+  if (!id) {
+    setStatus("Enter a ticket ID like FRAMI-ABC123.");
+    ticketLookupInput.focus();
+    return;
+  }
+
+  await viewTicket({ id, serverUrl }, { remember: true });
+}
+
+async function viewTicket(ticket, options = {}) {
+  if (!ticket?.id) {
+    return;
+  }
+
+  const fetchServerUrl = normalizeServerUrl(ticket.serverUrl || serverUrl);
+  if (!fetchServerUrl || !accessToken) {
+    renderTokenPanel(true);
+    setStatus("Open Settings and check the backend URL and token before viewing history.");
+    return;
+  }
+
+  setBusy(true, `Loading ${ticket.id}...`);
+
+  try {
+    const response = await fetch(`${fetchServerUrl}/tickets/${encodeURIComponent(ticket.id)}`, {
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${accessToken}`
+      }
+    });
+    const body = await readResponseBody(response);
+
+    if (!response.ok) {
+      throw new Error(getFailureMessage({ status: response.status, body }, `Could not load ${ticket.id}.`));
+    }
+
+    const loaded = normalizeHistoryTicket(body, ticket, fetchServerUrl);
+    activeHistoryTicket = loaded;
+    screenshots = loaded.screenshots;
+    attachments = loaded.attachments;
+    commentInput.value = loaded.comment;
+    ticketLookupInput.value = loaded.id;
+    currentCapture = screenshots[0] || null;
+    lastTicketId = loaded.id;
+
+    showTicket(loaded);
+    renderAttachments();
+    renderScreenshots();
+    renderTicketHistory();
+    showCurrentCapture();
+    renderHistoryView();
+    if (options.remember) {
+      await saveLoadedTicketHistory(loaded);
+    }
+    setBusy(false, `Showing ${loaded.id}.`);
+  } catch (error) {
+    setBusy(false, error instanceof Error ? error.message : String(error));
+  }
+}
+
+async function showCurrentDraft() {
+  const saved = await chrome.storage.local.get([
+    "attachments",
+    "draftScreenshots",
+    "lastComment",
+    "selectedCaptureId"
+  ]);
+
+  activeHistoryTicket = null;
+  screenshots = Array.isArray(saved.draftScreenshots) ? saved.draftScreenshots : [];
+  attachments = Array.isArray(saved.attachments) ? saved.attachments : [];
+  commentInput.value = saved.lastComment || "";
+  currentCapture = null;
+  resetTicket();
+  renderAttachments();
+  renderScreenshots();
+  renderTicketHistory();
+  selectCapture(saved.selectedCaptureId || screenshots.at(-1)?.id || null);
+  renderHistoryView();
+  setStatus("Showing current draft.");
 }
 
 function renderAttachments() {
@@ -289,7 +432,10 @@ function renderScreenshots() {
     deleteButton.textContent = "Delete";
     deleteButton.addEventListener("click", () => deleteScreenshot(screenshot.id));
 
-    item.append(button, deleteButton);
+    item.append(button);
+    if (!activeHistoryTicket) {
+      item.append(deleteButton);
+    }
     screenshotsList.append(item);
   });
 }
@@ -321,12 +467,16 @@ function renderTicketHistory() {
   for (const ticket of ticketHistory.slice(0, 8)) {
     const item = document.createElement("li");
     const button = document.createElement("button");
+    const copyButton = document.createElement("button");
     const meta = document.createElement("span");
     const detail = document.createElement("span");
 
+    item.className = "ticketHistoryItem";
+
     button.type = "button";
     button.className = "ticketHistoryButton";
-    button.addEventListener("click", () => copyTicketFromHistory(ticket));
+    button.dataset.active = ticket.id === activeHistoryTicket?.id ? "true" : "false";
+    button.addEventListener("click", () => viewTicketFromHistory(ticket));
 
     meta.className = "ticketHistoryMeta";
     meta.textContent = `${ticket.id} - ${formatHistoryTime(ticket.createdAt)} - ${ticket.screenshotCount || 0} shot${ticket.screenshotCount === 1 ? "" : "s"}`;
@@ -334,8 +484,13 @@ function renderTicketHistory() {
     detail.className = "ticketHistoryDetail";
     detail.textContent = getTicketHistoryDetail(ticket);
 
+    copyButton.type = "button";
+    copyButton.className = "ticketHistoryCopyButton";
+    copyButton.textContent = "Copy";
+    copyButton.addEventListener("click", () => copyTicketFromHistory(ticket));
+
     button.append(meta, detail);
-    item.append(button);
+    item.append(button, copyButton);
     ticketHistoryList.append(item);
   }
 }
@@ -350,17 +505,18 @@ function showCurrentCapture() {
   if (!currentCapture) {
     previewImage.hidden = true;
     previewImage.removeAttribute("src");
+    previewImage.alt = "No screenshot selected";
     emptyState.hidden = false;
-    sendBtn.disabled = true;
-    clearCapturesBtn.disabled = !screenshots.length;
+    renderHistoryView();
     return;
   }
 
   previewImage.src = currentCapture.dataUrl;
+  const captureIndex = screenshots.findIndex((screenshot) => screenshot.id === currentCapture?.id);
+  previewImage.alt = captureIndex >= 0 ? getCaptureLabel(currentCapture, captureIndex) : "Selected screenshot";
   previewImage.hidden = false;
   emptyState.hidden = true;
-  sendBtn.disabled = false;
-  clearCapturesBtn.disabled = false;
+  renderHistoryView();
 }
 
 function toTicketScreenshot(screenshot) {
@@ -401,14 +557,32 @@ async function saveTicketHistory(ticket) {
   renderTicketHistory();
 }
 
+async function saveLoadedTicketHistory(ticket) {
+  const primary = ticket.screenshots[0] || null;
+  const nextTicket = {
+    id: ticket.id,
+    url: ticket.url || "",
+    createdAt: ticket.createdAt || new Date().toISOString(),
+    comment: ticket.comment || "",
+    screenshotCount: ticket.screenshotCount || ticket.screenshots.length,
+    attachmentCount: ticket.attachmentCount || ticket.attachments.length,
+    sourceTitle: primary?.tab?.title || primary?.page?.title || "",
+    sourceUrl: primary?.tab?.url || primary?.page?.url || "",
+    serverUrl: ticket.serverUrl || serverUrl
+  };
+
+  ticketHistory = [
+    nextTicket,
+    ...ticketHistory.filter((historyTicket) => historyTicket.id !== nextTicket.id)
+  ].slice(0, MAX_TICKET_HISTORY);
+
+  await chrome.storage.local.set({ ticketHistory });
+  renderTicketHistory();
+}
+
 function setBusy(isBusy, message) {
-  selectAreaBtn.disabled = isBusy;
-  selectAreaEmptyBtn.disabled = isBusy;
-  settingsBtn.disabled = isBusy;
-  sendBtn.disabled = isBusy || !currentCapture;
-  copyTicketBtn.disabled = isBusy || !lastTicketId;
-  clearCapturesBtn.disabled = isBusy || !screenshots.length;
-  saveTokenBtn.disabled = isBusy;
+  busy = isBusy;
+  renderHistoryView();
   setStatus(message);
 }
 
@@ -416,9 +590,9 @@ function setStatus(message) {
   statusNode.textContent = message || "";
 }
 
-async function updateBadge() {
-  await chrome.action.setBadgeText({ text: screenshots.length ? String(screenshots.length) : "" });
-  if (screenshots.length) {
+async function updateBadge(count = screenshots.length) {
+  await chrome.action.setBadgeText({ text: count ? String(count) : "" });
+  if (count) {
     await chrome.action.setBadgeBackgroundColor({ color: "#1c5fca" });
   }
 }
@@ -446,8 +620,40 @@ function renderTokenPanel(forceOpen = false) {
   if (!tokenPanel.hidden) {
     serverUrlInput.value = serverUrl || "";
     tokenInput.value = accessToken || "";
-    window.setTimeout(() => (serverUrl && accessToken ? serverUrlInput : tokenInput).focus(), 0);
+    window.setTimeout(() => (serverUrl ? tokenInput : serverUrlInput).focus(), 0);
   }
+}
+
+function renderHistoryView() {
+  const viewingHistory = Boolean(activeHistoryTicket);
+
+  historyViewBar.hidden = !viewingHistory;
+  if (viewingHistory) {
+    historyViewTitle.textContent = `Viewing ${activeHistoryTicket.id}`;
+    historyViewMeta.textContent = `${activeHistoryTicket.screenshotCount || screenshots.length} shot${(activeHistoryTicket.screenshotCount || screenshots.length) === 1 ? "" : "s"}`;
+    captureHeaderLabel.textContent = "Ticket assets";
+    emptyStateTitle.textContent = "No screenshots on this ticket";
+    emptyStateBody.textContent = "The ticket loaded, but it does not include screenshot captures.";
+  } else {
+    historyViewTitle.textContent = "Viewing ticket";
+    historyViewMeta.textContent = "";
+    captureHeaderLabel.textContent = "Draft";
+    emptyStateTitle.textContent = "No screenshots yet";
+    emptyStateBody.textContent = "Select the exact area that needs attention. You can repeat this on app and Figma tabs before creating a ticket.";
+  }
+
+  selectAreaBtn.disabled = busy || viewingHistory;
+  selectAreaEmptyBtn.disabled = busy || viewingHistory;
+  settingsBtn.disabled = busy;
+  sendBtn.disabled = busy || viewingHistory || !currentCapture;
+  copyTicketBtn.disabled = busy || !lastTicketId;
+  clearCapturesBtn.disabled = busy || viewingHistory || !screenshots.length;
+  clearCapturesBtn.hidden = viewingHistory;
+  saveTokenBtn.disabled = busy;
+  ticketLookupBtn.disabled = busy;
+  ticketLookupInput.disabled = busy;
+  attachmentsInput.disabled = viewingHistory;
+  commentInput.disabled = viewingHistory;
 }
 
 function normalizeServerUrl(value) {
@@ -508,6 +714,99 @@ function normalizeTicketResponse(body) {
   };
 }
 
+function normalizeTicketId(value) {
+  const match = String(value || "").toUpperCase().match(/FRAMI-[A-Z0-9]{6}/);
+  return match ? match[0] : "";
+}
+
+function normalizeHistoryTicket(body, historyTicket, fetchServerUrl) {
+  const id = typeof body?.id === "string" && body.id ? body.id : historyTicket.id;
+  const rawScreenshots = dedupeImageList([
+    ...normalizeImageList(body?.screenshot),
+    ...normalizeImageList(body?.screenshots)
+  ]);
+
+  const normalizedScreenshots = rawScreenshots
+    .map((image, index) => normalizeHistoryScreenshot(image, id, index))
+    .filter(Boolean);
+
+  const normalizedAttachments = normalizeImageList(body?.attachments)
+    .map((image, index) => normalizeHistoryAttachment(image, id, index))
+    .filter(Boolean);
+
+  return {
+    id,
+    url: typeof body?.url === "string" ? body.url : historyTicket.url || `${fetchServerUrl}/tickets/${id}`,
+    createdAt: typeof body?.createdAt === "string" ? body.createdAt : historyTicket.createdAt || "",
+    comment: typeof body?.comment === "string" ? body.comment : historyTicket.comment || "",
+    screenshotCount: normalizedScreenshots.length,
+    attachmentCount: normalizedAttachments.length,
+    screenshots: normalizedScreenshots,
+    attachments: normalizedAttachments,
+    serverUrl: fetchServerUrl
+  };
+}
+
+function normalizeImageList(value) {
+  if (Array.isArray(value)) {
+    return value.filter((item) => item && typeof item === "object");
+  }
+
+  if (value && typeof value === "object") {
+    return [value];
+  }
+
+  return [];
+}
+
+function dedupeImageList(images) {
+  const seen = new Set();
+  const deduped = [];
+
+  for (const image of images) {
+    const key = image.id || image.dataUrl || image.dataURL || JSON.stringify(image);
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    deduped.push(image);
+  }
+
+  return deduped;
+}
+
+function normalizeHistoryScreenshot(image, ticketId, index) {
+  const dataUrl = image.dataUrl || image.dataURL || "";
+  if (typeof dataUrl !== "string" || !dataUrl) {
+    return null;
+  }
+
+  return {
+    ...image,
+    id: typeof image.id === "string" && image.id ? image.id : `${ticketId}-screenshot-${index + 1}`,
+    dataUrl,
+    mimeType: image.mimeType || "image/png",
+    note: image.note || image.comment || "",
+    capturedAt: image.capturedAt || ""
+  };
+}
+
+function normalizeHistoryAttachment(image, ticketId, index) {
+  const dataUrl = image.dataUrl || image.dataURL || "";
+  if (typeof dataUrl !== "string" || !dataUrl) {
+    return null;
+  }
+
+  return {
+    ...image,
+    id: typeof image.id === "string" && image.id ? image.id : `${ticketId}-attachment-${index + 1}`,
+    name: image.name || `attachment-${index + 1}`,
+    dataUrl,
+    mimeType: image.mimeType || "application/octet-stream",
+    size: Number.isFinite(image.size) ? image.size : estimateDataUrlBytes(dataUrl)
+  };
+}
+
 function showTicket(ticket) {
   ticketResult.hidden = false;
   ticketResult.textContent = ticket.url ? `${ticket.id}\n${ticket.url}` : ticket.id;
@@ -519,6 +818,19 @@ function resetTicket() {
   ticketResult.hidden = true;
   ticketResult.textContent = "";
   copyTicketBtn.disabled = true;
+}
+
+async function readResponseBody(response) {
+  const text = await response.text();
+  if (!text) {
+    return "";
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
 }
 
 function sanitizeTicketHistory(value) {
@@ -621,4 +933,14 @@ function formatBytes(value) {
   }
 
   return `${(value / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function estimateDataUrlBytes(dataUrl) {
+  const commaIndex = dataUrl.indexOf(",");
+  if (commaIndex === -1) {
+    return 0;
+  }
+
+  const payload = dataUrl.slice(commaIndex + 1);
+  return Math.round((payload.length * 3) / 4);
 }

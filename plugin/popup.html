@@ -25,14 +25,22 @@
         <img id="previewImage" alt="No screenshot captured yet" hidden>
         <div id="emptyState" class="emptyState">
           <div class="emptyIcon" aria-hidden="true"></div>
-          <h2>No screenshots yet</h2>
-          <p>Select the exact area that needs attention. You can repeat this on app and Figma tabs before creating a ticket.</p>
+          <h2 id="emptyStateTitle">No screenshots yet</h2>
+          <p id="emptyStateBody">Select the exact area that needs attention. You can repeat this on app and Figma tabs before creating a ticket.</p>
           <button id="selectAreaEmptyBtn" type="button">Select area</button>
         </div>
       </section>
 
+      <section id="historyViewBar" class="historyViewBar" hidden>
+        <div>
+          <strong id="historyViewTitle">Viewing ticket</strong>
+          <span id="historyViewMeta"></span>
+        </div>
+        <button id="returnToDraftBtn" type="button" class="secondary">Current draft</button>
+      </section>
+
       <div class="captureHeader">
-        <span>Draft</span>
+        <span id="captureHeaderLabel">Draft</span>
         <button id="clearCapturesBtn" type="button" class="clearDraftButton" disabled>Clear all</button>
       </div>
       <ul id="screenshotsList" class="captureList" aria-label="Screenshots"></ul>
@@ -67,6 +75,16 @@
       </div>
 
       <div id="ticketResult" class="ticketResult" hidden></div>
+
+      <section class="ticketLookup">
+        <div class="sectionHeader">
+          <h2>Open ticket</h2>
+        </div>
+        <div class="ticketLookupRow">
+          <input id="ticketLookupInput" type="text" autocomplete="off" spellcheck="false" placeholder="FRAMI-ABC123">
+          <button id="ticketLookupBtn" type="button">Open</button>
+        </div>
+      </section>
 
       <section id="ticketHistorySection" class="ticketHistory" hidden>
         <div class="sectionHeader">

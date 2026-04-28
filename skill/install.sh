@@ -177,8 +177,13 @@ install_one() {
   echo "Installed or refreshed Frami skill for $label: $target_dir"
 }
 
+if [[ "${FRAMI_RESET_CONFIG:-}" == "1" ]]; then
+  rm -f "$config_file"
+fi
+
 if [[ -f "$config_file" ]]; then
-  echo "Frami config already exists: $config_file"
+  echo "Keeping existing Frami config: $config_file"
+  echo "Set FRAMI_RESET_CONFIG=1 to replace it during install."
 elif [[ -n "${FRAMI_DOMAIN:-}" && -n "${FRAMI_TOKEN:-}" ]]; then
   frami_url="$(normalize_server_url "$FRAMI_DOMAIN")"
   write_config "$frami_url" "$FRAMI_TOKEN"

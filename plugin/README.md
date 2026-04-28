@@ -23,6 +23,8 @@ The backend URL is configured in the popup settings. Use a full URL like `https:
 
 Draft screenshots, comments, and attachments are stored locally until the user clears them or creates a ticket.
 
+The popup can also open an existing ticket ID, fetch it from the configured backend, and preview the stored screenshots and attachments without replacing the current draft.
+
 For now, ticket creation uses the saved token as:
 
 ```text

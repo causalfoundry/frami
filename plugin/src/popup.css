@@ -337,6 +337,45 @@ button:disabled {
   word-break: break-word;
 }
 
+.historyViewBar {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid #b7d4ff;
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: #12386f;
+  background: #eaf3ff;
+}
+
+.historyViewBar div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.historyViewBar strong {
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.historyViewBar span {
+  color: #475467;
+  font-size: 11px;
+}
+
+.historyViewBar button {
+  min-width: 104px;
+  min-height: 30px;
+  flex: 0 0 auto;
+  font-size: 12px;
+}
+
 .sectionHeader {
   display: flex;
   align-items: center;
@@ -381,12 +420,37 @@ button:disabled {
   gap: 8px;
 }
 
+.ticketLookup {
+  display: grid;
+  gap: 8px;
+}
+
+.ticketLookupRow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+.ticketLookupRow input {
+  text-transform: uppercase;
+}
+
+.ticketLookupRow button {
+  min-width: 72px;
+}
+
 .ticketHistoryList {
   display: grid;
   gap: 6px;
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+.ticketHistoryItem {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px;
 }
 
 .ticketHistoryButton {
@@ -400,6 +464,20 @@ button:disabled {
   color: #18212f;
   background: #ffffff;
   text-align: left;
+}
+
+.ticketHistoryButton[data-active="true"] {
+  border-color: #1c5fca;
+  background: #eaf3ff;
+}
+
+.ticketHistoryCopyButton {
+  min-width: 58px;
+  min-height: 44px;
+  border-color: #cfd6e4;
+  color: #344054;
+  background: #ffffff;
+  font-size: 12px;
 }
 
 .ticketHistoryMeta,

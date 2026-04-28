@@ -133,6 +133,8 @@ token=token-value
 
 Enter a domain such as `frami.example.com`, not `https://frami.example.com`; the installer stores and verifies it as `https://frami.example.com`.
 
+Re-running the installer refreshes `~/frami/plugin` and the installed Codex/Claude skills. It keeps `~/.frami/config` by default; use `FRAMI_RESET_CONFIG=1` when you want to replace the saved domain/token.
+
 Then ask Codex:
 
 ```text
